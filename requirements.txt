@@ -1,0 +1,18 @@
+# Third-party packages this tool actually imports. Everything else it uses
+# (urllib, concurrent.futures, csv, json, pathlib, tempfile) is standard library,
+# so there is no HTTP client here on purpose.
+#
+# Written 29 Aug 2026, before the first cloud run. Until then the repo had no
+# manifest at all and a fresh environment had to guess, which is a bad way to
+# find out whether the tool is portable.
+
+Pillow          # PIL, map label rendering in mapper.py
+PyMuPDF         # fitz, the PDF report and A3 sheet writers
+python-docx     # docx, the S&F binder
+python-pptx     # pptx, the deck export
+lxml            # XML handling under the docx and pptx paths
+shapely         # geometry, parcel boundaries and layer intersection
+
+# NOTE ON SHAPELY: it binds to GEOS, a native library. Linux wheels normally
+# carry it, but if the cloud install fails this is the first place to look, and
+# it is the one dependency here that is not pure Python.
