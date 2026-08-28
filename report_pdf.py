@@ -76,9 +76,17 @@ FONT_FILES = {
 BUILTIN = {"head": "hebo", "semi": "hebo", "body": "helv", "bold": "hebo"}
 
 
+_BUNDLED = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
+
+
 def _font_path(names):
+    # Bundled first, so a report renders identically wherever this runs. The
+    # Windows paths stay as a fallback but are no longer required. Before the
+    # fonts were bundled on 28 Aug 2026 they were the ONLY sources, so on Linux
+    # every lookup returned None and the tool dropped to base-14 Helvetica,
+    # which has no macron glyphs. See fonts/LICENSE.md.
     for n in names:
-        for base in (_USER_FONTS, r"C:\Windows\Fonts"):
+        for base in (_BUNDLED, _USER_FONTS, r"C:\Windows\Fonts"):
             p = os.path.join(base, n)
             if os.path.exists(p):
                 return p

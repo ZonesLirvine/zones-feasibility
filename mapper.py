@@ -158,15 +158,24 @@ DRAW_ORDER = [
 ]
 
 
+_BUNDLED_FONTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
+
+
 def _font(size, bold=False):
-    names = (["segoeuib.ttf", "arialbd.ttf"] if bold
-             else ["segoeui.ttf", "arial.ttf"])
+    # Bundled Open Sans, not Segoe UI or Arial. Those are Microsoft fonts that
+    # cannot be redistributed, and they were the only options until 28 Aug 2026,
+    # so off Windows this fell through to ImageFont.load_default(), a fixed size
+    # bitmap face that made every map label unreadable. latin-ext first so
+    # macrons survive in place names. See fonts/LICENSE.md.
+    names = (["open-sans-v44-latin-ext-600.ttf", "open-sans-v44-latin-600.ttf"]
+             if bold else
+             ["open-sans-v44-latin-ext-regular.ttf",
+              "open-sans-v44-latin-regular.ttf"])
     for n in names:
-        for path in (n, os.path.join(r"C:\Windows\Fonts", n)):
-            try:
-                return ImageFont.truetype(path, size)
-            except OSError:
-                continue
+        try:
+            return ImageFont.truetype(os.path.join(_BUNDLED_FONTS, n), size)
+        except OSError:
+            continue
     return ImageFont.load_default()
 
 
