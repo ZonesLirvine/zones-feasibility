@@ -1,0 +1,23 @@
+# Build artefacts
+__pycache__/
+*.pyc
+
+# OUTPUTS GO TO DRIVE, NOT HERE. Lee's rule, 28 Aug 2026.
+# Finished feasibility reports, binders, decks and maps belong in the job's
+# folder under G:\My Drive\_Zones\Projects\<year>\<job>\. Before this rule,
+# 24MB of Balmain and Karekare artefacts were sitting in this directory,
+# which was two thirds of the repository.
+#
+# Anchored to the root with a leading slash on purpose: templates/ holds
+# real assets (stage PNGs, the Zones logo, the A4 deck template) that MUST
+# stay tracked. Do not turn these into bare *.png patterns.
+/*.pdf
+/*.docx
+/*.pptx
+/*.png
+/*.jpg
+
+# CLIENT DATA, READ BEFORE ADDING A REMOTE
+# This repository holds the engine only. Real addresses, client names and
+# generated reports must never be committed. Adding a remote publishes
+# whatever is in here, so check what is staged before you do.
