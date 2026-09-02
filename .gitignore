@@ -21,3 +21,13 @@ __pycache__/
 # This repository holds the engine only. Real addresses, client names and
 # generated reports must never be committed. Adding a remote publishes
 # whatever is in here, so check what is staged before you do.
+
+# NO SECOND COPY OF THE CODE, ever. 2 September 2026.
+# The installed skill used to hold one and the skill ran THAT, not this tree,
+# which is how a fortnight of client S&F decks came out of a stale sf_report.py.
+# A third copy was then found here: templates/backup/skill-before-sync-*/ held
+# the pre-sync snapshot, i.e. precisely the stale code that caused it, tracked
+# and heading for GitHub. Removed; recoverable from commit 342b6b3 if ever
+# needed, which it will not be, because git history is the backup now.
+templates/backup/skill-before-sync-*/
+templates/backup/*/scripts/
