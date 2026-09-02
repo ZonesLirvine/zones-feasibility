@@ -1,6 +1,6 @@
 ---
 name: zones-feasibility
-description: Zones Landscaping Auckland site feasibility check and S&F Report generator. Give it an address and it checks 40 Council and LINZ planning, hazard and buried-service records, the zone standards and the NZS 3604 wind zone against the real property boundary, then builds either a standalone council feasibility report or the whole Scoping and Feasibility client binder around the result, covering the cover page, personal note, the client's own drawing sheets, the site findings, scope, timeline and budget. Always ask which of the two is wanted before building anything. Use this skill whenever the user mentions a site check, a feasibility check, an S&F report or binder, what is on this site, consent triggers, planning overlays, zone standards, buried services, wastewater or water mains, wind zone, or gives an Auckland address for a landscaping job, even when they do not name the tool. Also use it for questions about what a site is zoned, what they are allowed to build on, how much hard surface is allowed, or whether something is likely to need consent.
+description: Zones Landscaping Auckland site feasibility check and S&F Report generator. Give it an address and it checks 40 Council and LINZ planning, hazard and buried-service records against the real property boundary, then builds either a standalone council feasibility report or the whole Scoping and Feasibility client binder around the result, covering the cover page, personal note, the client's own drawing sheets, the site findings, scope, timeline and budget. Always ask which of the two is wanted before building anything. Use this skill whenever the user mentions a site check, a feasibility check, an S&F report or binder, what is on this site, consent triggers, planning overlays, zone standards, buried services, wastewater or water mains, or gives an Auckland address for a landscaping job, even when they do not name the tool. Also use it for questions about what a site is zoned, what they are allowed to build on, how much hard surface is allowed, or whether something is likely to need consent.
 ---
 
 # Zones Site Feasibility
@@ -9,8 +9,7 @@ Auckland-only site feasibility check for Zones Landscaping, and the generator
 for the whole S&F Report client binder. Python, no API keys, all data is
 Auckland Council open data, Council's GeoMaps asset server, and LINZ.
 
-The code is at the root of this folder. Run everything from here,
-`C:\Users\Lirvi\Desktop\zones-feasibility\`.
+The code is in `scripts/`. Run everything from there.
 
 ## What it produces
 
@@ -24,27 +23,11 @@ python run.py "<address>" --report "<job>.pptx" --client "<Client Name>"
 ```
 
 A4 landscape, one slide per ring-binder page: how to use (internal), cover,
-personal note from Lee, contents, the design section, three site feasibility
-pages generated in place, scope of work, timeline, budget range, allowances and
-exclusions, how we work, what happens next. Note that scope, timeline and budget
-are placeholders Lee fills in, so this is the start of a client pack rather than
-a finished one.
-
-The master template is `_Zones\Resources\Templates\SF-Presentation-Template-Landscape-v1.pptx`
-in Drive, and it is the only one. A working document: every page of the
-current design with `{{merge}}` tokens, which Lee opens to hand-build a
-report. The generator reads the same file for its layouts and theme and
-drops the pages, so the layouts, footer, page number and logo are Lee's own
-rather than reimplemented. When he sends a deck that moves the design on,
-refresh the master from it:
-
-```bash
-python tools/build_master.py "<the sent deck>.pptx"
-```
-
-SF_34, the 66 Rhinevale Close deck, is the reference for the page content. If
-generating produces a page Lee then deletes, reorders or rebuilds by hand, fix
-`sf_report.py` rather than doing it again next job.
+personal note from Lee, contents, the design section, the YOUR SITE divider,
+four site feasibility pages generated in place, scope of work, timeline, budget
+range, how we work, what happens next. Note that scope, timeline and budget are
+placeholders Lee fills in, so this is the start of a client pack rather than a
+finished one.
 
 **Just the council feasibility**, the site read on its own:
 
@@ -52,16 +35,8 @@ generating produces a page Lee then deletes, reorders or rebuilds by hand, fix
 python run.py "<address>" --pdf "<job>.pdf"
 ```
 
-A4 portrait, site map, property, zone standards, wind zone, soil and every
-finding.
-Nothing to fill in, so it is complete the moment it is built.
-
-The disclaimer is the short form, at the foot of the findings: it is
-indicative, Aven Limited accepts no liability for reliance on it, and here is
-where the data came from. Lee's call, 14 Aug 2026: the report is not a
-contract and the full terms are in the signed S&F contract. Every output
-carries the same block, from `render.CLOSING_NOTICE`. Do not give it a page of
-its own again without asking him.
+A4 portrait, site map, property and zone standards, every finding and the full
+notice. Nothing to fill in, so it is complete the moment it is built.
 
 Other outputs, all optional and independent:
 
@@ -72,8 +47,8 @@ Other outputs, all optional and independent:
 | `--plans PATH` | the job's drawing set, PDF or image, into the design section |
 | `--pdf PATH` | client-facing A4 portrait report, site map included |
 | `--page a3` | with `--pdf`, A3 landscape presentation sheets instead |
-| `--pptx PATH` | just the site pages, as editable slides |
-| `--docx PATH` | just the site pages, as Word |
+| `--pptx PATH` | just the four site pages, as editable slides |
+| `--docx PATH` | just the four site pages, as Word |
 | `--map PATH` | the site map on its own, as a PNG |
 | `--json PATH` | the raw findings, useful for rebuilding without re-querying |
 | `--note "..."` | your plain-English read of the site, printed on A3 sheet 1 |
@@ -81,35 +56,6 @@ Other outputs, all optional and independent:
 | `--skip-verify` | skip the layer health check. Never for client work |
 
 Roughly 9 to 12 seconds per address, nearly all of it waiting on Council.
-
-## There is one tree, and this is it
-
-Fixed 2 September 2026. Until then the installed skill at
-`~/.claude/skills/zones-feasibility/` held a full second copy of the engine under
-`scripts/`, and **the skill executed that copy, not this one.** Editing here
-changed nothing about what the skill produced until somebody remembered to sync.
-
-That is not hypothetical. **The skill spent a fortnight generating S&F decks from
-a stale `sf_report.py`** while this tree was three versions ahead. Nothing
-failed, nothing warned anyone, it quietly produced the old thing, and it reached
-client work. Lee has confirmed he hit it in practice.
-
-The stopgap was `tools/sync_skill.py`, and it had two problems. It had to be
-remembered. And it compared raw bytes, so it reported `templates/zones-sf-a4.pptx`
-as stale when both files unpacked to 39 identical parts. **A checker that cries
-wolf is one you stop reading**, and then the real drift goes through behind it.
-
-So the copy is deleted and the sync tool with it. The installed skill is now a
-single `SKILL.md` that points here. **This tree is the only tree.** A cloud
-session runs the same code by cloning the repo, which is this same source again.
-
-**Do not recreate `scripts/` in the skill folder and do not add a sync step
-back.** If you find yourself writing one, the thing to fix is whatever made a
-second copy seem necessary.
-
-`templates/` still matters and still sits beside the `.py` files: the logo, the
-wordmark, the five stage photographs, the selections motif and the offline cache
-of the master are all resolved relative to `slides.py`.
 
 ## Before you touch the outputs, understand what the tool is for
 
@@ -211,9 +157,9 @@ Council is down, everything else still builds. That is deliberate: Lee still
 needs his binder. Do not "fix" this by making it refuse.
 
 **A failed lookup does not make the address unknown.** Lee typed it and has been
-to the site. The address still prints on the cover and the letter. What changes
-is that claims about the *check* drop to what we do rather than what we found,
-and the site section becomes a placeholder page with a do-not-send banner.
+to the site. The address still prints on the cover, letter, divider and closing
+page. What changes is that claims about the *check* drop to what we do rather
+than what we found.
 
 **Never use the open data portal for buried services.** Council publishes model
 subsets prefixed `wm_` that look like the real network and are about a tenth of
@@ -221,13 +167,6 @@ it. Details and the full layer registry in `references/data-sources.md`.
 
 **Non-residential zones are not loaded.** Business, Open Space and Rural report
 "standards not held" rather than guessing. Do not invent figures for them.
-
-**Most of Auckland has no mapped wind zone.** Council maps the old city council
-areas, so Rodney, Franklin and most rural land come back "not recorded". That
-is a gap to close with Council or a designer, never a low wind zone. Where a
-site straddles two wind areas the higher one is reported, because that is what
-a fence or a pergola has to be built to. Details in
-`references/data-sources.md`.
 
 ## Reference files
 
@@ -264,5 +203,5 @@ Health-check the data sources any time something looks wrong:
 python tools/check_layers.py
 ```
 
-45 probes, and it fails loudly rather than letting a renamed layer quietly
+44 probes, and it fails loudly rather than letting a renamed layer quietly
 report "clear".

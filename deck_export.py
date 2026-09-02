@@ -191,7 +191,7 @@ def _stat_tile(slide, prs, y, label, value, sub, accent):
 
 
 def _binder_overview(prs, prsw, h_mm, result, parcel, zone, std, findings,
-                     flagged, clear):
+                     flagged, clear, template=False):
     """
     SF_34's opening site page: four headline numbers down the left, the zone
     standards down the right, what it means, and the notice.
@@ -219,16 +219,22 @@ def _binder_overview(prs, prsw, h_mm, result, parcel, zone, std, findings,
                  "existing driveway.")
     if build:
         build_txt += " Building footprint capped at about %s m²" % f"{build:,.0f}"
+    elif template:
+        build_txt += " Building footprint capped at about [000] m²"
     tiles = [
-        ("SITE AREA", "%s m²" % f"{area:,}" if area else "-",
+        ("SITE AREA",
+         "%s m²" % f"{area:,}" if area else ("[000] m²" if template else "-"),
          parcel.get("area_source", ""), GREEN),
         ("ZONE", std.get("code") or "-",
          (zone.get("name") or "").replace("Residential - ", ""), GREEN),
         ("FLAGGED FOR ATTENTION", "%d of %d" % (len(flagged), len(findings)),
          "%d checked, %d clear" % (len(findings), len(clear)),
          RED if flagged else GREEN),
-        ("WHAT YOU CAN BUILD ON", "%s m²" % f"{hard:,.0f}" if hard else "-",
-         build_txt if hard else "Not determined for this zone", GREEN),
+        ("WHAT YOU CAN BUILD ON",
+         "%s m²" % f"{hard:,.0f}" if hard else ("[000] m²" if template
+                                                else "-"),
+         build_txt if (hard or template) else "Not determined for this zone",
+         GREEN),
     ]
     for i, (label, value, sub, accent) in enumerate(tiles):
         _stat_tile(s, prs, 50.8 + i * 26.9, label, value, sub, accent)
@@ -419,13 +425,17 @@ def build_pptx(result, out_path, map_path=None, size="a3"):
     return out_path
 
 
-def build_site_slides(prs, result, map_path=None):
+def build_site_slides(prs, result, map_path=None, template=False):
     """
     Add the site slides to an existing presentation.
 
     Kept separate from build_pptx so the S&F Report generator can drop them in
     rather than Lee pulling them in by hand with Reuse Slides. The site-only
     export is still useful on its own, so both entry points stay.
+
+    `template` is for the hand-fill master: the pages are drawn the way a real
+    job draws them, but the numbers that would be a property's own show as
+    tokens rather than as somebody else's data.
 
     At A4 this is the shape of the deck Lee actually sends (SF_34, 66
     Rhinevale Close): three pages, findings before the site map, and the
@@ -471,7 +481,7 @@ def build_site_slides(prs, result, map_path=None):
     # ------------------------------------------------------------ slide 1
     if sf34:
         _binder_overview(prs, CW, h_mm, result, parcel, zone, std,
-                         findings, flagged, clear)
+                         findings, flagged, clear, template)
     else:
         s = _slide(prs)
         y = _head(s, prs, "Your site",
@@ -597,6 +607,16 @@ def build_site_slides(prs, result, map_path=None):
     # is the order Lee has been reinstating by hand on every job.
     def _map_slide():
         if not (map_path and os.path.exists(map_path)):
+            if not template:
+                return
+            s = _slide(prs)
+            _head(s, prs, "Your site", "Site map",
+                  "Auckland Council aerial photography with your boundary "
+                  "and everything we flagged")
+            SL.placeholder(s, prs, M, 38.9, CW, h_mm - mb - 38.9,
+                           "Site map, generated with the report",
+                           "Comes out of the address. Nothing to add here.")
+            _footer(s, prs)
             return
         s = _slide(prs)
         top = _head(s, prs, "Your site", "Site map",

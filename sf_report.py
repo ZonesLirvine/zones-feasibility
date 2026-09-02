@@ -39,6 +39,7 @@ import datetime
 import os
 
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
+from pptx.util import Mm
 
 import brand as BR
 import deck_export
@@ -167,7 +168,7 @@ def _cover(prs, f):
     SL.tb(s, 57.0, 148.6, 146.0, 8,
           "By Lee Irvine  ·  Zones Landscaping Auckland Central",
           size=10, colour=BR.GREEN)
-    SL.logo(s, 227.3, 180.6, 44.7, 12.3)
+    SL.logo(s, 227.3, 180.6, 44.7, 12.3, wordmark=True)
     return s
 
 
@@ -254,6 +255,33 @@ def _contents(prs):
 
 
 
+def _site_template_note(prs):
+    """
+    The site section as it appears in the hand-fill master.
+
+    Not the do-not-send placeholder: nothing has gone wrong here, these three
+    pages simply are not hand-filled. They come out of the address.
+    """
+    s = SL.blank(prs, SL.PAGE_PLAIN)
+    ml, _, cw = SL.content_box(prs)
+    top = SL.head(s, prs, "Your site", "The planning checks we ran")
+    SL.placeholder(s, prs, ml, top + 8, cw, 90,
+                   "Three pages, generated from the address",
+                   "Delete this slide once they are in.")
+    SL.tb(s, ml, top + 104, cw, 24,
+          "This section is not filled in by hand. Run the feasibility tool "
+          "with the site address and it writes three pages here: the property "
+          "and its zone standards, what the check flagged and what each item "
+          "means, and the site map. Forty Council and LINZ records, checked "
+          "against the real boundary.",
+          size=10, colour=BR.MUTED, spacing=1.4)
+    SL.tb(s, ml, top + 132, cw, 8,
+          'python run.py "<address>" --report "<job>.pptx" '
+          '--client "<Client Name>"',
+          size=9.5, font=BF, colour=BR.NOTE_INK, spacing=1.3)
+    return s
+
+
 def _site_placeholder(prs, reason):
     """
     Stand-in for the four feasibility pages when the lookup did not run.
@@ -283,77 +311,49 @@ def _site_placeholder(prs, reason):
 
 def _site_plan(prs, plan_image=None):
     """
-    The plan does the heavy lifting. Vision and key factors are a blurb
-    attached to it, not a slide of their own, the plan and the render carry
-    the weight of the proposal.
+    The concept plan, full page.
+
+    No vision blurb, no key-features list, no header band. The drawing is the
+    argument, and it comes off the drawing set already titled and annotated;
+    anything set beside it competes with it and gets deleted. SF_34 runs it
+    edge to edge with the Zones mark top left and a detail called out in an
+    oval, which is what this places.
     """
     s = SL.blank(prs, SL.PAGE_PLAIN)
-    SL.head(s, prs, "Your concept design", "2D site plan")
-    ml, _, cw = SL.content_box(prs)
-    iw = cw * 0.66
-    rx = ml + iw + 12.7
-    rw = cw - iw - 12.7
-
     if plan_image and os.path.exists(plan_image):
-        _fit_picture(s, plan_image, ml, 38.1, iw, 139.7)
+        _fit_picture(s, plan_image, 0, 1.3, prs._w, 190.0)
     else:
-        SL.placeholder(s, prs, ml, 38.1, iw, 139.7,
-                       "Add 2D site plan, fill this area",
-                       "Delete this box once your plan is in.")
-
-    SL.tb(s, rx, 38.1, rw, 8, "Vision", size=11.5, font=HF, colour=BR.INK,
-          bold=True)
-    SL.tb(s, rx, 47.0, rw, 42,
-          "[Personalise this, 2 to 3 sentences. Reflect back what the client "
-          "described at the initial consultation, the picture of the "
-          "finished space we're designing towards.]",
-          size=9.5, italic=True, colour=BR.MUTED, spacing=1.45)
-
-    SL.tb(s, rx, 92.7, rw, 8, "Key features", size=11.5, font=HF,
-          colour=BR.INK, bold=True)
-    SL.rich(s, rx, 101.6, rw, 76.2, [
-        {"runs": [("1  ", {"font": HF, "bold": True, "colour": BR.GREEN}),
-                  ("[e.g. Custom louvre roof]", {"bold": True,
-                                                  "colour": BR.INK}),
-                  ("   ·   [All-weather outdoor entertaining for the "
-                   "family]", {"colour": BR.MUTED, "italic": True})]},
-        {"runs": [("2  ", {"font": HF, "bold": True, "colour": BR.GREEN}),
-                  ("[e.g. Garden upgrade]", {"bold": True,
-                                             "colour": BR.INK}),
-                  ("   ·   [Easy-care planting that looks good year "
-                   "round]", {"colour": BR.MUTED, "italic": True})]},
-        {"runs": [("3  ", {"font": HF, "bold": True, "colour": BR.GREEN}),
-                  ("[Component]", {"bold": True, "colour": BR.INK}),
-                  ("   ·   [Motivation / desired outcome]",
-                   {"colour": BR.MUTED, "italic": True})]},
-    ], size=9.5, spacing=1.6, space_after=10)
-    SL.footer(s, prs)
+        SL.placeholder(s, prs, 0, 1.3, prs._w, 190.0,
+                       "Add the 2D concept plan, full page",
+                       "Edge to edge. Delete this box once the plan is in.",
+                       fill=BR.WHITE)
+    SL.logo(s, 20.6, 9.9, 65.4, 25.9)
+    SL.oval_picture_box(s, prs, 7.9, 100.5, 54.5, 68.4,
+                        "[ Section detail, optional ]")
     return s
 
 
 def _design_sheet(prs, path, caption=None):
     """
-    One of Lee's own drawing sheets, placed as a full page.
+    One of Lee's own drawing sheets, full page.
 
     The sheets come out of the drawing set already designed, at A3 landscape
-    with their own title block and Zones logo. A3 and A4 are the same shape, so
-    a sheet drops onto an A4 binder page at 1:1 with nothing cropped and no
-    reflowing. It is placed inside the margins rather than bled to the edge, so
-    the 25 mm punch still misses the drawing, and it keeps the deck's footer so
-    the page still numbers itself with the rest of the binder.
+    with their own title block and Zones logo. A3 and A4 are the same shape,
+    so a sheet drops onto an A4 binder page at 1:1 with nothing cropped and no
+    reflowing.
 
-    No eyebrow or subhead: the sheet carries its own title block, and putting
-    ours above it would brand the same page twice.
+    Run edge to edge, the way SF_34 runs its plan, rather than inset inside
+    the margins: a drawing shrunk to fit a text margin loses the scale that
+    makes it readable. The drawing's own whitespace keeps the punch clear.
+    No logo added, unlike the placeholder page: these sheets carry one in
+    their title block already.
     """
     s = SL.blank(prs, SL.PAGE_PLAIN)
-    ml, mr, mt, mb = prs._m
-    cw = prs._w - ml - mr
-    avail_h = prs._h - mt - mb - 2
-    _fit_picture(s, path, ml, mt, cw, avail_h)
+    _fit_picture(s, path, 0, 1.3, prs._w, 190.0)
     if caption:
-        SL.tb(s, ml, prs._h - mb - 1, cw, 6, caption, size=8.5, italic=True,
-              colour=BR.MUTED)
-    SL.footer(s, prs)
+        ml, mr, _, mb = prs._m
+        SL.tb(s, ml, prs._h - mb - 1, prs._w - ml - mr, 6, caption, size=8.5,
+              italic=True, colour=BR.MUTED)
     return s
 
 
@@ -368,80 +368,104 @@ def _fit_picture(slide, path, x, y, w, h):
 
 
 def _render_3d(prs):
+    """
+    The 3D visualisation, full bleed, nothing on top of it.
+
+    The old version put a green caption bar and a "3D RENDER 01 OF 04" tag
+    over the bottom of the image. SF_34 has neither: the render fills the
+    page and the footer carries the page number like every other page.
+    """
     s = SL.blank(prs, SL.PAGE_PLAIN)
-    SL.full_bleed(s, BR.TINT_GREEN)
-    ml, _, cw = SL.content_box(prs)
-    _, mr, _, _ = prs._m
     SL.banner(s, prs, "OPTIONAL SLIDE, delete if 3D renders are not a "
                       "deliverable. Duplicate this slide per render. Delete "
                       "this banner if keeping the slide.")
-    SL.rich(s, 50.8, 86.4, prs._w - 101.6, 25.4, [
-        {"text": "[ Add 3D render, full bleed, edge to edge ]", "size": 12,
-         "bold": True, "italic": True, "colour": BR.PH_INK},
-        {"text": "One render per slide for maximum impact. Set the image to "
-                 "fill the whole slide, then delete this text.", "size": 9,
-         "italic": True, "colour": BR.MUTED},
-    ], align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE, spacing=1.4)
-    SL.rect(s, 0, prs._h - 19.8, prs._w, 19.8, BR.CAPBAR)
-    SL.rich(s, ml, prs._h - 19.8, 177.8, 19.8, [
-        {"runs": [("Your concept design  ·  ", {}),
-                  ("[area this render shows]", {"italic": True})]},
-    ], size=12.5, font=HF, colour=BR.WHITE, bold=True,
-        valign=MSO_ANCHOR.MIDDLE)
-    SL.tb(s, prs._w - mr - 76.2, prs._h - 19.8, 76.2, 19.8,
-          "3D RENDER [01] OF [04]", size=8.5, font=HF, colour=BR.COVER_BRAND,
-          align=PP_ALIGN.RIGHT, valign=MSO_ANCHOR.MIDDLE, tracking=2)
-    return s
-
-
-def _swatch_page(prs, eyebrow, sub, n, headers, fracs, rows, note,
-                 box_label, banner_text):
-    """Selections: a strip of image boxes over a table."""
-    s = SL.blank(prs)
-    ml, _, cw = SL.content_box(prs)
-    SL.banner(s, prs, banner_text)
-    SL.tb(s, ml, 15.7, cw, 7, eyebrow.upper(), size=10.5, font=HF,
-          colour=BR.GREEN, bold=True, tracking=2, spacing=1.0)
-    SL.tb(s, ml, 22.9, cw, 11, sub, size=17, font=HF, colour=BR.INK,
-          bold=True, spacing=1.0)
-    gap = 4.6
-    bw = (cw - gap * (n - 1)) / n
-    for i in range(n):
-        SL.placeholder(s, prs, ml + i * (bw + gap), 39.4, bw, 48.3, box_label,
-                       label_size=8)
-    SL.brand_table(s, prs, ml, 96.5, cw, 40, fracs, headers, rows)
-    SL.tb(s, ml, 148, cw, 8, note, size=8.5, italic=True, colour=BR.MUTED)
-    SL.footer(s, prs)
+    SL.placeholder(s, prs, 0, 0, prs._w, prs._h,
+                   "Add the 3D render, full bleed, edge to edge",
+                   "One render per slide. Delete this box once it is in.",
+                   fill=BR.WHITE)
     return s
 
 
 def _selections(prs):
     """
-    Plants, palette and materials, one page attached to the design, numbered
-    to match markers on the 2D plan rather than a disconnected swatch table.
+    Plants, palette and materials: the schedule on the left, the photographs
+    on the right.
 
-    Doubles as the mood board when a job has no 3D render: nothing else in
-    the deck then shows material and planting character, so this page
-    carries it instead.
+    The numbers down the left column key to markers on the 2D plan, so the
+    client can read a name off the drawing and find the picture of it. The
+    photographs are circular because a grid of rectangles reads as a
+    catalogue; circles read as a palette, which is what this is.
+
+    Doubles as the mood board when a job has no 3D render: nothing else in the
+    deck then shows material and planting character.
     """
-    return _swatch_page(
-        prs, "Selections", "Plants, palette and materials",
-        6, ["No.", "Item", "Type", "Notes"], [0.08, 0.26, 0.16, 0.5],
-        [[("1", True), ("[e.g. Lomandra Tanika]", True), ("Plant", True),
-          ("[e.g. Border along driveway, hardy and low maintenance]", True)],
-         [("2", True), ("[e.g. Deck]", True), ("Material", True),
-          ("[e.g. Kwila, oiled finish]", True)],
-         [("3", True), ("[e.g. Paving]", True), ("Material", True),
-          ("[e.g. Concrete pavers, charcoal]", True)],
-         [("[No.]", True), ("[Item]", True), ("[Plant / Material]", True),
-          ("[Notes]", True)]],
-        "Numbers correspond to markers on the 2D plan. Plant and material "
-        "selections shown are indicative, final selections, grades and "
-        "specifications are confirmed in the next stage.",
-        "Selection photo",
-        "OPTIONAL SLIDE. Legend if keeping the 3D render, mood board if "
-        "not, use one or the other. Delete this banner if keeping the "
-        "slide.")
+    s = SL.blank(prs)
+    SL.banner(s, prs, "OPTIONAL SLIDE. Legend if keeping the 3D render, mood "
+                      "board if not, use one or the other. Delete this banner "
+                      "if keeping the slide.")
+    SL.tb(s, 25.1, 15.7, 246.9, 7.0, "SELECTIONS", size=10.5, font=HF,
+          colour=BR.GREEN, bold=True, spacing=1.0, tracking=2)
+    SL.tb(s, 25.1, 22.9, 246.9, 11.0, "Plants, palette and materials",
+          size=17, font=HF, colour=BR.INK, bold=True, spacing=1.0)
+
+    rows = [("1", "Plant", "[Plant name]", "[Common name, and where it goes]"),
+            ("2", "Plant", "[Plant name]", "[Common name, and where it goes]"),
+            ("3", "Plant", "[Plant name]", "[Common name, and where it goes]"),
+            ("4", "Plant", "[Plant name]", "[Common name, and where it goes]"),
+            ("5", "Plant", "[Plant name]", "[Common name, and where it goes]"),
+            ("6", "Plant", "[Plant name]", "[Common name, and where it goes]"),
+            ("7", "Material", "[Material]", "[Specification, and where it "
+                                            "goes]"),
+            ("8", "Material", "[Material]", "[Specification, and where it "
+                                            "goes]"),
+            ("9", "Material", "[Material]", "[Specification, and where it "
+                                            "goes]"),
+            ("10", "Material", "[Material]", "[Specification, and where it "
+                                             "goes]"),
+            ("11", "Material", "[Material]", "[Specification, and where it "
+                                             "goes]"),
+            ("12", "Material", "[Material]", "[Specification, and where it "
+                                             "goes]")]
+    _selection_table(s, 23.1, 32.7, rows)
+
+    # The photo panel. One dashed ellipse per row of the table, captioned, so
+    # it is obvious which picture belongs to which line.
+    SL.rect(s, 179.7, 28.3, 93.4, 162.3, BR.PHBG, BR.PH_EDGE, width=1)
+    for i in range(12):
+        col, row = i % 3, i // 3
+        x = 183.7 + col * 29.6
+        y = 32.5 + row * 37.37
+        SL.circle_photo(s, x, y, 26.2)
+        SL.tb(s, x - 1.1, y + 28.2, 28.3, 7.2, "[Name]", size=8,
+              colour=BR.PH_INK, bold=True, italic=True,
+              align=PP_ALIGN.CENTER, spacing=1.15)
+    return s
+
+
+def _selection_table(slide, x, y, rows):
+    """
+    The selections schedule. No rules and no banding at all: the numbers and
+    the type column already group it, and lines would fight the photographs
+    beside it.
+    """
+    tbl = slide.shapes.add_table(len(rows) + 1, 4, Mm(x), Mm(y), Mm(142.7),
+                                 Mm(6.7 + len(rows) * 11.1)).table
+    for i, w in enumerate((8.8, 21.2, 55.7, 57.0)):
+        tbl.columns[i].width = Mm(w)
+    tbl.rows[0].height = Mm(6.7)
+    for r in range(1, len(rows) + 1):
+        tbl.rows[r].height = Mm(11.1)
+    for c, head in enumerate(("NO.", "TYPE", "NAME", "COMMENTS")):
+        SL.cell(tbl, 0, c, head, size=7.5, bold=True, colour=BR.GREEN,
+                font=HF)
+    for r, (num, kind, name, note) in enumerate(rows, 1):
+        SL.cell(tbl, r, 0, num, size=8.5, colour=BR.MUTED)
+        SL.cell(tbl, r, 1, kind.upper(), size=7.5, bold=True, colour=BR.MUTED,
+                font=HF)
+        SL.cell(tbl, r, 2, name, size=9, bold=True, colour=BR.INK, font=HF)
+        SL.cell(tbl, r, 3, note, size=8.5, colour=BR.MUTED)
+    SL.plain_table(tbl)
+    return tbl
 
 
 def _consent_draft(result):
@@ -490,9 +514,10 @@ def _scope(prs, result):
     SL.tb(s, 25.1, 19.6, 199.0, 7.8, "What's included", size=17, font=HF,
           colour=BR.INK, bold=True, spacing=1.15)
     SL.tb(s, 25.1, 31.3, 246.9, 9.0,
-          "[One line on what this scope covers for this job.] Everything "
-          "below is drawn on your concept plan. Quantities and specifications "
-          "are confirmed as a fixed price in Stage 3.",
+          "[One line on what this scope covers for this job. Add or delete "
+          "trade sections below to suit it.] Everything below is drawn on "
+          "your concept plan. Quantities and specifications are confirmed as "
+          "a fixed price in Stage 3.",
           size=9.5, spacing=1.15)
 
     def column(x, w, groups):
@@ -515,7 +540,7 @@ def _scope(prs, result):
         ("Access and demolition", [
             "[Service relocations, e.g. fibre along the existing wall]",
             "[What comes out, and what is protected]",
-            "Excavate and prepare foundations."]),
+            "[Excavation and foundation preparation]"]),
         ("Retaining walls", [
             "[Wall, height, material and construction detail]",
             "[Second wall run, and where it steps]",
@@ -533,7 +558,7 @@ def _scope(prs, result):
         ("Planting and lawn", [
             "[Hedging, and where it runs]",
             "[Garden planting]",
-            "Lawn reinstated.",
+            "[Lawn reinstatement]",
             "[Edging to lawn and garden]"])])
 
     # The consent position from the site check. It puts the evidence in front
@@ -629,6 +654,9 @@ def _timeline(prs):
           colour=BR.MUTED, spacing=1.15)
     SL.tb(s, 191.9, ly, 80, 5, "[About X months to CCC]", size=8,
           italic=True, colour=BR.MUTED, align=PP_ALIGN.RIGHT, spacing=1.15)
+    SL.tb(s, 24.9, ly + 6.5, 160, 5,
+          "[Bars show a typical consented programme. Drag them to this job.]",
+          size=8, italic=True, colour=BR.NOTE_INK, spacing=1.15)
     return s
 
 
@@ -732,17 +760,17 @@ def _allowances_exclusions(prs):
     SL.rich(s, 24.9, 54.6, 116.8, 76.6, [
         {"text": "[Site-specific allowance, e.g. buried service depth to be "
                  "confirmed on site]", "bullet": 3.8},
-        {"text": "Existing drainage is compliant and is reused where it is "
-                 "not disturbed by the works.", "bullet": 3.8},
-        {"text": "Ground conditions are as described in the geotechnical "
-                 "report provided.", "bullet": 3.8},
+        {"text": "[Existing drainage, e.g. compliant and reused where the "
+                 "works do not disturb it]", "bullet": 3.8},
+        {"text": "[Ground conditions, e.g. as described in the geotechnical "
+                 "report provided]", "bullet": 3.8},
         {"text": "[Access constraint, e.g. tight against the house. "
                  "Equipment is sized to suit]", "bullet": 3.8},
         {"text": "[Third party works, e.g. fibre relocation by the network "
                  "provider. Allowance covers coordination only]",
          "bullet": 3.8},
-        {"text": "Engineer to confirm construction detail before the fixed "
-                 "price is issued.", "bullet": 3.8},
+        {"text": "[Engineering input, e.g. engineer to confirm construction "
+                 "detail before the fixed price is issued]", "bullet": 3.8},
     ], size=9, spacing=1.15, space_after=6)
 
     SL.tb(s, 155.1, 44.5, 116.8, 7.6, "Exclusions",
@@ -917,6 +945,80 @@ def _what_happens_next(prs):
 
 # ====================================================================== build
 
+def _template_result():
+    """
+    A stand-in engine result for the hand-fill master.
+
+    The three YOUR SITE pages are the ones nobody fills in by hand, so a
+    template that only describes them leaves the reader guessing. These draw
+    the real pages with the real checklist, and put a token everywhere a
+    property's own answer would go: the master is a template, not a copy of
+    somebody's report.
+    """
+    import layers as L
+    names = [lay["name"] for lay in L.LAYERS]
+    flagged = [{"name": "[What was flagged, item %d]" % i, "status": "on_site",
+                "plain": "[What it is, and what it means for the design and "
+                         "the budget. One or two sentences, plain English.]",
+                "clause": "[AUP ref]"} for i in range(1, 4)]
+    nearby = [{"name": "[Nearby item %d]" % i, "status": "nearby"}
+              for i in range(1, 4)]
+    clear = [{"name": n, "status": "clear"}
+             for n in names[:len(names) - len(flagged) - len(nearby)]]
+    return {
+        "address": "{{Site Address}}",
+        "site": {"display": "{{SITE ADDRESS}}"},
+        "generated": "[date and time]",
+        "warnings": [],
+        "parcel": {"legal_description": "[Lot 00 DP 000000]",
+                   "title": "[NA00A/000]", "area_m2": None,
+                   "area_source": "[LINZ survey]"},
+        "zone": {"name": "[Zone name]", "standards": {
+            "code": "[H0]", "front_yard_m": "[0.0]", "side_yard_m": "[0.0]",
+            "rear_yard_m": "[0.0]", "site_coverage_pct": "[00]",
+            "impervious_pct": "[00]", "landscaped_pct": "[00]",
+            "riparian_yard_m": "[0.0]", "coastal_yard_m": "[0.0]",
+            "clauses": {}}},
+        "findings": flagged + nearby + clear,
+    }
+
+
+def build_template(out_path, result=None, map_path=None):
+    """
+    The hand-fill master: every page of the current design, no job data.
+
+    Built by the generator rather than maintained by hand, which is the only
+    way the template and the tool stay the same document. Merge fields stay as
+    {{tokens}} and guidance stays in [brackets], the way the template has
+    always carried them.
+
+    The three YOUR SITE pages are drawn the way a real job draws them, from
+    `_template_result()`, so the master shows that part of the design instead
+    of describing it. Pass a real `result` only when you deliberately want a
+    worked example; the master itself must not carry a client's data.
+    """
+    prs = SL.new_presentation("a4")
+    f = {"name": "{{Name}}", "first": "{{First Name}}",
+         "date": "{{Date}}", "address": "{{Site Address}}"}
+    _how_to_use(prs, has_site=True)
+    _cover(prs, f)
+    _personal_note(prs, f)
+    _contents(prs)
+    _site_plan(prs)
+    _selections(prs)
+    _render_3d(prs)
+    deck_export.build_site_slides(prs, result or _template_result(),
+                                  map_path, template=result is None)
+    _scope(prs, None)
+    _timeline(prs)
+    _budget(prs)
+    _allowances_exclusions(prs)
+    _how_we_work(prs)
+    _what_happens_next(prs)
+    prs.save(out_path)
+    return out_path
+
+
 def build(result, out_path, client=None, map_path=None, date=None,
           plan_image=None, budget=None, site_reason=None, address=None,
           design_sheets=None):
@@ -958,8 +1060,8 @@ def build(result, out_path, client=None, map_path=None, date=None,
         _selections(prs)
     else:
         _site_plan(prs, plan_image)
-        _render_3d(prs)
         _selections(prs)
+        _render_3d(prs)
 
     if result:
         deck_export.build_site_slides(prs, result, map_path)

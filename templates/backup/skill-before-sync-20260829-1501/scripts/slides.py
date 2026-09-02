@@ -16,11 +16,8 @@ new_presentation():
                      comes out the same optical size on an A3 sheet
 """
 
-import copy
-import os
-
 from pptx import Presentation
-from pptx.enum.shapes import MSO_SHAPE, PP_PLACEHOLDER
+from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.oxml.ns import nsdecls, qn
 from pptx.util import Mm, Pt
@@ -31,42 +28,6 @@ import brand as BR
 HEAD_FONT = BR.HEAD_FONT
 BODY_FONT = BR.BODY_FONT
 
-# The A4 binder is built on the master S&F template, not on python-pptx's
-# default. The master is the deck Lee sends with every slide removed, so the
-# theme, the three Zones layouts and the logo come across intact.
-#
-# That is what puts the page chrome beyond argument: the footer rule, the
-# footer brand line, the centred live slide number and the top-right logo are
-# all layout shapes on "Zones Page" / "Zones Page No Logo", identical on every
-# page because they are literally the same shapes, not redrawn per slide.
-#
-# One master, in Drive, and it is the single source of truth. It is a normal
-# .pptx carrying every page of the current design, so Lee can open it and work
-# in it; the generator wants only its layouts and theme, so it drops the slides
-# on the way in. Refresh it from a sent deck with tools/build_master.py, and do
-# not hand-edit the local copy, which is only a cache so the tool still builds
-# when Drive is not mounted.
-MASTER = (r"G:\My Drive\_Zones\Resources\Templates"
-          r"\SF-Presentation-Template-Landscape-v1.pptx")
-_HERE = os.path.dirname(os.path.abspath(__file__))
-TEMPLATE = os.path.join(_HERE, "templates", "zones-sf-a4.pptx")
-# Two real assets from _Zones\Marketing\Logo, not one cropped two ways.
-# LOGO is the stacked mark, leaves over "zones LANDSCAPING", 2.52:1.
-# WORDMARK is "zones" on its own, 3.61:1, which is what the page header and
-# the cover use. They are different shapes, so putting one in the other's box
-# stretches it rather than failing visibly.
-LOGO = os.path.join(_HERE, "templates", "zones-logo.jpg")
-WORDMARK = os.path.join(_HERE, "templates", "zones-wordmark.jpg")
-# The Zones motif stands in for the selections palette rather than a dashed
-# circle. PowerPoint's Replace Image keeps the shape and the crop, so swapping
-# one for the job's own plant is two clicks; an empty placeholder is not. It
-# is centred on a square canvas so the circular crop shows the whole mark.
-SELECTION_PHOTO = os.path.join(_HERE, "templates", "selection-photo.png")
-
-COVER = "Zones Cover"          # no footer, no logo
-PAGE = "Zones Page"            # footer + logo top right
-PAGE_PLAIN = "Zones Page No Logo"
-
 # The en dash is the bullet everywhere. A round bullet reads as a slide deck;
 # a dash reads as a document, which is what goes in the binder.
 DASH = "–"
@@ -74,61 +35,10 @@ DASH = "–"
 
 # ------------------------------------------------------------------ setup
 
-def strip_slides(prs):
-    """
-    Drop every slide, keep the masters, layouts, theme and their media.
-
-    The master is a working document with all its pages in it, and a report
-    builds its own, so the pages have to come out or every job would ship the
-    template's as well.
-    """
-    lst = prs.slides._sldIdLst
-    for sld in list(lst):
-        prs.part.drop_rel(sld.rId)
-        lst.remove(sld)
-    return prs
-
-
-def _open_master():
-    """
-    The master template, from Drive when it is reachable, slides removed.
-
-    Reading it every build is deliberate: a change Lee makes to the master
-    reaches the next report without anyone remembering to sync anything. The
-    local copy is refreshed on the way past and used on its own when Drive is
-    not mounted, so being offline costs currency, not the build.
-    """
-    try:
-        prs = strip_slides(Presentation(MASTER))
-        try:
-            prs.save(TEMPLATE)        # refresh the offline cache
-        except OSError:
-            pass                      # read-only checkout, cache stays stale
-        return prs
-    except Exception:
-        # Drive unmounted, file locked by PowerPoint, or the master is not
-        # where it should be. The cache is the same package, already stripped,
-        # as of the last successful build.
-        if os.path.exists(TEMPLATE):
-            return Presentation(TEMPLATE)
-        return None
-
-
 def new_presentation(size="a4"):
-    """
-    A blank deck at the binder page size, with the brand margins applied.
-
-    A4 opens the Zones template so pages inherit their chrome from the layout.
-    A3 is a presentation sheet rather than a binder page and has no equivalent
-    master, so it stays on the default template and draws its own footer.
-    """
+    """A blank deck at the binder page size, with the brand margins applied."""
     w_mm, h_mm = (int(v) for v in BR.PAGE[size])
-    prs = _open_master() if size == "a4" else None
-    if prs is not None:
-        prs._layouts = {l.name: l for l in prs.slide_layouts}
-    else:
-        prs = Presentation()
-        prs._layouts = {}
+    prs = Presentation()
     prs.slide_width = Mm(w_mm)
     prs.slide_height = Mm(h_mm)
     prs._w, prs._h = w_mm, h_mm
@@ -140,106 +50,9 @@ def new_presentation(size="a4"):
     return prs
 
 
-def blank(prs, layout=PAGE):
-    """
-    A slide with no content placeholders on it. Everything is positioned.
-
-    `layout` names one of the Zones layouts. On a deck built from the default
-    template (A3) the name is ignored and the stock blank layout is used, so
-    callers do not have to care which template they are on.
-    """
-    lay = getattr(prs, "_layouts", {}).get(layout)
-    if lay is None:
-        return prs.slides.add_slide(prs.slide_layouts[6])
-    slide = prs.slides.add_slide(lay)
-    # python-pptx clones body and title placeholders but deliberately skips
-    # date, footer and slide-number ones. Without this the page number simply
-    # would not print: a layout slide-number placeholder does not render on a
-    # slide that has not inherited it.
-    for ph in lay.placeholders:
-        if ph.element.ph_type == PP_PLACEHOLDER.SLIDE_NUMBER:
-            slide.shapes._spTree.append(copy.deepcopy(ph.element))
-    return slide
-
-
-def logo(slide, x, y, w, h, wordmark=False):
-    """
-    The Zones mark, placed on the slide itself.
-
-    `wordmark` is the word on its own, for the header band and the cover;
-    without it you get the stacked mark. SF_34 cropped one file to get both,
-    which works but leaves the crop to be got right every time.
-    """
-    return slide.shapes.add_picture(WORDMARK if wordmark else LOGO,
-                                    Mm(x), Mm(y), Mm(w), Mm(h))
-
-
-def circle_photo(slide, x, y, size, path=SELECTION_PHOTO):
-    """
-    A photograph cropped to a circle.
-
-    Centre-cropped to square first, so a landscape photo fills the circle
-    instead of being squashed into it. The crop is what PowerPoint would apply
-    itself if you dropped the picture into a circular frame by hand, so
-    Replace Image behaves the way Lee expects afterwards.
-    """
-    from PIL import Image
-    pic = slide.shapes.add_picture(path, Mm(x), Mm(y), Mm(size), Mm(size))
-    iw, ih = Image.open(path).size
-    if iw > ih:
-        trim = (1 - ih / iw) / 2
-        l, t, r, b = trim, 0, trim, 0
-    else:
-        trim = (1 - iw / ih) / 2
-        l, t, r, b = 0, trim, 0, trim
-    blip = pic._element.find(qn("p:blipFill"))
-    for old in blip.findall(qn("a:srcRect")):
-        blip.remove(old)
-    blip.insert(1, parse_xml(
-        '<a:srcRect %s l="%d" t="%d" r="%d" b="%d"/>'
-        % (nsdecls("a"), l * 100000, t * 100000, r * 100000, b * 100000)))
-    geom = pic._element.find(qn("p:spPr")).find(qn("a:prstGeom"))
-    geom.set("prst", "ellipse")
-    return pic
-
-
-def oval_picture_box(slide, prs, x, y, w, h, label):
-    """
-    A placeholder for a photo that will be cropped to an ellipse.
-
-    Drawn as the ellipse itself rather than a rectangle, so what Lee sees in
-    the template is the shape the photo ends up as.
-    """
-    sh = slide.shapes.add_shape(MSO_SHAPE.OVAL, Mm(x), Mm(y), Mm(w), Mm(h))
-    sh.fill.solid()
-    sh.fill.fore_color.rgb = BR.PHBG
-    sh.line.color.rgb = BR.PH_EDGE
-    sh.line.width = Pt(1)
-    from pptx.enum.dml import MSO_LINE_DASH_STYLE
-    sh.line.dash_style = MSO_LINE_DASH_STYLE.DASH
-    sh.shadow.inherit = False
-    tf = sh.text_frame
-    tf.word_wrap = True
-    tf.margin_left = tf.margin_right = Mm(2)
-    p = tf.paragraphs[0]
-    p.alignment = PP_ALIGN.CENTER
-    _apply(p.add_run(), prs._sz(8), BODY_FONT, BR.PH_INK, True, True, None)
-    p.runs[0].text = label
-    return sh
-
-
-def stage_photo(slide, n, x, y, w, h):
-    """
-    The photograph for stage `n` of the five-stage strip, 1-indexed.
-
-    Generic Zones work, not this job's site, so they live with the template
-    rather than coming in per report. Silently skipped if missing, because a
-    stage strip with no pictures still reads correctly and a missing asset is
-    not a reason to fail a client document.
-    """
-    path = os.path.join(os.path.dirname(LOGO), "stage-%02d.png" % n)
-    if os.path.exists(path):
-        return slide.shapes.add_picture(path, Mm(x), Mm(y), Mm(w), Mm(h))
+def blank(prs):
+    """A slide with no layout placeholders on it. Everything is positioned."""
+    return prs.slides.add_slide(prs.slide_layouts[6])
 
 
 def content_box(prs):
@@ -316,12 +129,7 @@ def rich(slide, x, y, w, h, paras, size=10, font=BODY_FONT, colour=BR.BODY,
         if after:
             p.space_after = Pt(after)
         if spec.get("bullet"):
-            # True for the standard 4.2mm hang, or a number to set it. The
-            # scope and allowances pages run a tighter 3.8mm at their smaller
-            # body size so the dash sits closer to the text it belongs to.
-            hang = spec["bullet"]
-            _bullet(p, hang=hang if isinstance(hang, (int, float))
-                    and hang is not True else 4.2)
+            _bullet(p)
         pfmt = {k: spec[k] for k in base if k in spec}
         runs = spec.get("runs")
         if runs is None:
@@ -376,40 +184,11 @@ def rect(slide, x, y, w, h, fill, line=None, dashed=False, width=0.75):
     return sh
 
 
-def _rule(slide, x0, y0, x1, y1, colour, width):
-    """
-    A hairline.
-
-    The shadow is switched off explicitly. A connector carries a <p:style>
-    with effectRef idx="1", which pulls a soft drop shadow out of the theme,
-    and at half a point that reads as a thick fuzzy line rather than a rule.
-    SF_34 kills it with an empty <a:effectLst/> and so do we.
-    """
-    ln = slide.shapes.add_connector(1, Mm(x0), Mm(y0), Mm(x1), Mm(y1))
+def hline(slide, x, y, w, colour=BR.LINE, width=0.75):
+    ln = slide.shapes.add_connector(1, Mm(x), Mm(y), Mm(x + w), Mm(y))
     ln.line.color.rgb = colour
     ln.line.width = Pt(width)
-    ln.shadow.inherit = False
     return ln
-
-
-def hline(slide, x, y, w, colour=BR.LINE, width=0.75):
-    return _rule(slide, x, y, x + w, y, colour, width)
-
-
-def vline(slide, x, y, h, colour=BR.LINE, width=0.75):
-    return _rule(slide, x, y, x, y + h, colour, width)
-
-
-def rounded(slide, x, y, w, h, fill):
-    """A Gantt bar. Rounded because a square bar reads as a table cell."""
-    sh = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE,
-                                Mm(x), Mm(y), Mm(w), Mm(h))
-    sh.fill.solid()
-    sh.fill.fore_color.rgb = fill
-    sh.line.fill.background()
-    sh.shadow.inherit = False
-    sh.text_frame.word_wrap = True
-    return sh
 
 
 def full_bleed(slide, colour):
@@ -457,15 +236,7 @@ def head(slide, prs, eyebrow, sub, note=None):
 
 
 def footer(slide, prs, page_number=True):
-    """
-    Hairline, brand line left, auto-updating slide number.
-
-    A no-op on the A4 binder, where all three come from the layout and drawing
-    them again would print them twice. Kept for the A3 sheets, which are on the
-    default template and have no Zones master to inherit from.
-    """
-    if getattr(prs, "_layouts", None):
-        return
+    """Hairline, brand line left, auto-updating slide number right."""
     ml, mr, _, mb = prs._m
     cw = prs._w - ml - mr
     y = prs._h - mb + 3.5
@@ -512,15 +283,14 @@ def banner(slide, prs, text):
        colour=BR.NOTE_INK, bold=True, italic=True, valign=MSO_ANCHOR.MIDDLE)
 
 
-def placeholder(slide, prs, x, y, w, h, label, hint=None, label_size=11,
-                fill=BR.PHBG):
+def placeholder(slide, prs, x, y, w, h, label, hint=None, label_size=11):
     """
     A dashed box marking where an image goes. Deleted once the image is in.
 
     label_size drops for a strip of narrow boxes, where the default wraps the
     label and leaves the closing bracket stranded on its own line.
     """
-    rect(slide, x, y, w, h, fill, BR.PH_EDGE, dashed=True, width=1)
+    rect(slide, x, y, w, h, BR.PHBG, BR.PH_EDGE, dashed=True, width=1)
     paras = [{"text": "[ %s ]" % label, "size": prs._sz(label_size),
               "bold": True, "italic": True, "colour": BR.PH_INK}]
     if hint:
@@ -616,34 +386,6 @@ def cell(table, r, c, text, size=10, bold=False, italic=False, colour=BR.INK,
     _apply(run, size, font, colour, bold, italic, tracking)
     run.text = text
     return tc
-
-
-def plain_table(table, pad=1.5, head_pad=0.7):
-    """
-    A table with no rules and no banding at all.
-
-    The selections schedule uses this: it sits beside a grid of photographs
-    and any line work competes with them. Fills still have to be painted,
-    because python-pptx tables inherit Office's blue banded default and
-    setting run colours alone leaves that in place.
-    """
-    table.first_row = False
-    table.horz_banding = False
-    for r, row in enumerate(table.rows):
-        for cell in row.cells:
-            cell.margin_left = cell.margin_right = Mm(1.2)
-            cell.margin_top = cell.margin_bottom = Mm(head_pad if r == 0
-                                                      else pad)
-            cell.fill.solid()
-            cell.fill.fore_color.rgb = BR.WHITE
-            for edge in ("L", "R", "T", "B"):
-                cell_border(cell, edge, None, None)
-            for p in cell.text_frame.paragraphs:
-                p.line_spacing = 1.15
-                for run in p.runs:
-                    if not run.font.name:
-                        run.font.name = BODY_FONT
-    return table
 
 
 def brand_table(slide, prs, x, y, w, h, col_fracs, headers, rows,

@@ -57,12 +57,18 @@ Design leads, the site check follows it, then the commercial pages. The site
 pages come out of the same command as everything else, so there is nothing to
 import and no second file to keep in step.
 
-**SF_34 is the template.** The 66 Rhinevale Close deck Lee sent is the
-reference for every page, not just the page order: the binder is built on
-`templates/zones-sf-a4.pptx`, which is that file with the slides deleted, so
-the theme, the fonts and the Zones Cover / Zones Page / Zones Page No Logo
-layouts come across intact. Footer, brand line, centred live page number and
-the top-right logo are layout shapes, identical on every page by construction.
+**One master template**, `_Zones\Resources\Templates\SF-Presentation-Template-Landscape-v1.pptx`
+in Drive. A working document: every page of the current design with
+merge tokens, on the layouts and theme from the deck Lee last sent. He
+opens it to hand-build a report; the generator opens the same file for its
+layouts and drops the pages. Footer, brand line, centred live page number
+and the top-right logo are layout shapes on it, identical on every page by
+construction. `tools/build_master.py` rebuilds it from a sent deck; the
+generator reads it on every build and caches a copy for when Drive is
+offline.
+
+**SF_34 is the reference for the pages themselves.** The 66 Rhinevale Close
+deck Lee sent settles every page, not just the page order.
 
 Generating 66 Rhinevale Close and comparing page by page gives zero differences
 in position, size, fill, line, font, size, weight, colour or spacing on the
